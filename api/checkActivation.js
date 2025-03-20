@@ -41,8 +41,57 @@ async function handler(req, res) {
 
     console.log("Found code data:", data);
 
-    // Check if code is already used on another device
-    if (data.deviceId && data.deviceId !== deviceId) {
+    // If there's no deviceId in the database or it matches the current one, proceed
+    if (!data.deviceId || data.deviceId === deviceId) {
+      // Parse dates for comparison
+      const serverExpiryDate = new Date(data.activeTill + "T23:59:59.999Z");
+      const currentDate = new Date();
+      console.log("Date comparison:", {
+        currentDate: currentDate.toISOString(),
+        expiryDate: serverExpiryDate.toISOString(),
+      });
+
+      // Check if current date is after expiry date
+      if (currentDate > serverExpiryDate) {
+        console.log("Code has expired");
+        // Update the database to mark this code as inactive
+        await supabase
+          .from("Database")
+          .update({ isActive: false })
+          .eq("code", cleanCode);
+
+        return res
+          .status(400)
+          .json({ valid: false, error: "Activation code has expired" });
+      }
+
+      // Update or set the deviceId
+      console.log("Updating device ID for code:", cleanCode);
+      const { error: updateError } = await supabase
+        .from("Database")
+        .update({ deviceId: deviceId })
+        .eq("code", cleanCode);
+
+      if (updateError) {
+        console.error("Error updating device ID:", updateError);
+        return res
+          .status(500)
+          .json({ valid: false, error: "Error updating device registration" });
+      }
+
+      // Return activation data
+      const activationData = {
+        code: data.code,
+        email: data.email,
+        activeTill: data.activeTill,
+        isActive: data.isActive,
+        deviceId: deviceId,
+      };
+
+      console.log("Activation successful:", activationData);
+      return res.status(200).json({ valid: true, data: activationData });
+    } else {
+      // Code is already used on another device
       console.log("Code already in use on device:", data.deviceId);
       return res.status(400).json({
         valid: false,
@@ -50,54 +99,6 @@ async function handler(req, res) {
         alreadyActivated: true,
       });
     }
-
-    // Parse dates for comparison
-    const serverExpiryDate = new Date(data.activeTill + "T23:59:59.999Z");
-    const currentDate = new Date();
-    console.log("Date comparison:", {
-      currentDate: currentDate.toISOString(),
-      expiryDate: serverExpiryDate.toISOString(),
-    });
-
-    // Check if current date is after expiry date
-    if (currentDate > serverExpiryDate) {
-      console.log("Code has expired");
-      // Update the database to mark this code as inactive
-      await supabase
-        .from("Database")
-        .update({ isActive: false })
-        .eq("code", cleanCode);
-
-      return res
-        .status(400)
-        .json({ valid: false, error: "Activation code has expired" });
-    }
-
-    // Update or set the deviceId
-    console.log("Updating device ID for code:", cleanCode);
-    const { error: updateError } = await supabase
-      .from("Database")
-      .update({ deviceId: deviceId })
-      .eq("code", cleanCode);
-
-    if (updateError) {
-      console.error("Error updating device ID:", updateError);
-      return res
-        .status(500)
-        .json({ valid: false, error: "Error updating device registration" });
-    }
-
-    // Return activation data
-    const activationData = {
-      code: data.code,
-      email: data.email,
-      activeTill: data.activeTill,
-      isActive: data.isActive,
-      deviceId: deviceId,
-    };
-
-    console.log("Activation successful:", activationData);
-    return res.status(200).json({ valid: true, data: activationData });
   } catch (error) {
     console.error("Server error:", error);
     return res
