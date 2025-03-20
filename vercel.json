@@ -2,26 +2,26 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.js",
+      "src": "*.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/check-activation",
-      "dest": "/api/check-activation.js"
+      "dest": "/check-activation.js"
     },
     {
       "src": "/api/check-status",
-      "dest": "/api/check-status.js"
+      "dest": "/check-status.js"
     },
     {
       "src": "/api/deactivate",
-      "dest": "/api/deactivate.js"
+      "dest": "/deactivate.js"
     },
     {
       "src": "/api/update-expiry",
-      "dest": "/api/update-expiry.js"
+      "dest": "/update-expiry.js"
     }
   ]
 }
