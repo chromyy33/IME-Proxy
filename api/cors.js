@@ -1,28 +1,24 @@
 export function corsMiddleware(handler) {
   return async (req, res) => {
-    // Get the origin from the request headers
-    const origin = req.headers.origin || '';
-    
-    // Allow Chrome extension origins (they start with chrome-extension://)
-    if (origin.startsWith('chrome-extension://')) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-      // For other origins, use a wildcard or specific domains
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
+    // Set CORS headers immediately
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
-    // Set other CORS headers
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-    // Handle preflight requests
+    // Handle preflight requests immediately
     if (req.method === 'OPTIONS') {
       res.status(200).end();
       return;
     }
 
-    // Call the actual handler
-    return handler(req, res);
+    try {
+      // Call the actual handler inside try-catch
+      return await handler(req, res);
+    } catch (error) {
+      console.error('Handler error:', error);
+      // Even on error, ensure CORS headers are set
+      res.status(500).json({ error: 'Internal server error' });
+    }
   };
 }
